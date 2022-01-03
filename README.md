@@ -11,22 +11,39 @@ To compile this program using GNU you need to type this command in the terminal,
 "sims" can be replaced by any other name you wish to name the executable.
 
 Parameters are:
+ 
  N: Population size
+ 
  a: Selfing rate
+ 
  r: 0 - Loci in the POD zone are equally spaced, 1 - Loci in the POD zone are randomly spaced
+ 
  nL: Number of loci in each POD zone
+ 
  sP: selection coefficient of alleles in POD zone
+ 
  hP: dominance coefficient of alleles in POD zone
+ 
  linkP: Distance in Morgans between loci in POD zone
+ 
  U: deleterious mutation rate per haploid genome
+ 
  s: selection coefficient of mutations involved in Background Selection
+ 
  h: dominance coefficient of mutations involved in Background Selection
+ 
  L: genome map length (average number of cross-overs at meiosis)
+ 
  Un: Mutation rate for the unlinked neutral locus (infinite alleles)
+ 
  sampleS: sample size for estimating inbreeding depression and heterosis
+ 
  nbgene: Number of generations in pasv for burn-in time
+ 
  nbgen: Total number of generations
+ 
  pas: number of generations between output of simulation results
+ 
  rep: identifier number to avoid overwriting different simulations run with the same parameters
  
 
