@@ -37,9 +37,10 @@ extern MTRand rnd;
  pasv: number of generations between output of simulation results
  repv: identifier number to avoid overwriting different simulations run with the same parameters
  Gv: demes index
+ m: migration rate (probality for an offspring to descend from foreign parents)
  */
 
-void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv)
+void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
 
 {
     int i, j, k, g, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns;
@@ -641,10 +642,24 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 for (j = 0; j < Nv; j++)
                 {
                     nb = 2 * j + g * Nv * 2;
+                 
+                    // ici je remplace g par k, et si il y a migration k est tiré différent de g
+                    if (rnd.rand() > m)
+                    {
+                    k = g;  //no migration, the parents are selected in the same deme as the offspring
+                    }
+                    else
+                    {
+                    k= rnd.randInt(Gv);
+                    do
+                    {
+                       k= rnd.randInt(Gv); 
+                    } while (k==g);
+
                     // Selecting the maternal individual
                     do
                     {
-                        i = rnd.randInt(Nv - 1) + g * Nv ;
+                        i = rnd.randInt(Nv - 1) + k * Nv ;
 
                     } while (rnd.rand() > Wij[i]);
                     pa1 = 2 * i;
@@ -681,7 +696,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                     {
                         do
                         {
-                            i = rnd.randInt(Nv - 1) + Nv * g;
+                            i = rnd.randInt(Nv - 1) + Nv * k;
 
                         } while (rnd.rand() > Wij[i]);
 
@@ -702,7 +717,6 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 }
             }
 
-            // Migration
 
 
 
