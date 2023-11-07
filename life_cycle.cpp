@@ -22,8 +22,9 @@ extern MTRand rnd;
  Nv: Population size
  av: Selfing rate
  rv: 0 - Loci in the POD zone are equally spaced, 1 - Loci in the POD zone are randomly spaced
- nLv: Number of loci in each POD zone
- sPv: selection coefficient of alleles in POD zone
+ nLv: Number of deleterious mutations in the first POD zone
+ nEqv: Proportion of nLv in second POD zone (i.e. nEqv = 1: both POD zones have the same number of deleterious mutations)
+ sPv: selection coefficient of alleles in POD zone 
  hPv: dominance coefficient of alleles in POD zone
  linkPv: Distance in Morgans beween loci in POD zone
  Uv: deleterious mutation rate per haploid genome
@@ -40,11 +41,12 @@ extern MTRand rnd;
  m: migration rate (probality for an offspring to descend from foreign parents)
  */
 
-void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
+void recursion(int Nv, double av, int rv, int nLv, double nEqv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
 
 {
-    int i, j, k, g, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns;
-    double rd, rd2, rd3, rd4, rdd, w, wfix, wp, div, nbdel, hebar, henb, wout, wself, wpout, wpself, hePbar, hePnb;
+    int i, j, k, g, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns, repn;
+    double rd, rd2, rd3, rd4, rdd1, rdd2, w, wfix, wp, wpod, div, nbdel, hebar, henb, wout, wself, wpout, wpself, hePbar, hePnb;
+    
 
     int twoN = 2 * Nv;
     int twoNG = 2 * Nv *Gv;
@@ -69,7 +71,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
     double Whom = 1 - sv;
 
     // table of fitness values
-    double Wij[NG];
+    double Wij[Nv];
 
     // table of mean fitness for each deme and for pod , and to store max fitness of each group
     double wbar[Gv];
@@ -85,9 +87,16 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
     // creating Haplo output file storing positions and states of mutations in POD zones at the end of simulations (the name is created using parameter values, this can be modified here):
     char haplofile[256];
     stringstream nameH;
-    nameH << "N" << Nv << "_a" << av << "_r" << rv <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_Haplo_"<<repv<<".txt";
+    nameH << "N" << Nv << "_a" << av << "_r" << rv <<"_nL" << nLv <<"_nEq"<< nEqv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_Haplo.txt";
     nameH >> haplofile;
     ofstream fhout(haplofile);
+
+    // creating output file containing summary statistics (the name is created using parameter values, this can be modified here):
+    char mainfile[256];
+    stringstream nameM;
+     nameM << "N" << Nv << "_a" << av << "_r" << rv <<"_nL" << nLv <<"_nEq"<< nEqv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << ".txt";
+    nameM >> mainfile;
+    ofstream fout(mainfile);
 
     // Creating POD zones: Positions of mutations are saved in vectors
     std::vector<double> inds[Gv];
@@ -97,95 +106,129 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
     std::vector<double> fixedP;
 
 
-
+for (repn = 1; repn <= repv; repn++){
  // Scaling physical distance in relation to the full chromosome map length
     rd = linkPv / (Lv);
 // Placing the POD zone in the center of the chromosome, with nLv loci on either side of rd2 (a total of 2*nLv loci are positioned, nLv on each haplotype). This can be changed here.
-    rd2 = 0.5;
+    rd4 = 0.5;
+
+    // Number of mutations on second haplotype
+    int nLb = double(nLv) * nEqv;
+
+    int nL = std::max(nLv, nLb);
+    nLb = std::min(nLv, nLb);
+    
 
     // Positioning mutations in the POD zone which is of map length 2*nLv*rd. For rv = 0 in the parameter set, mutaions are equally spaced, if not, then they are placed randomly.
-    rdd = double(nLv) *rd;
-    rd3 = rd2 - rdd;
+    // half length of first POD zone
+    rdd1 = double(nL) *rd;
+    // Starting position of POD on first haplotype
+    rd2 = rd4 - rdd1;
+    // half length of second POD zone
+    rdd2 = double(nLb)*rd;
+    // Starting position of POD on second haplotype
+    rd3 = rd4 - rdd2;
+    // End position of POD on second haplotype
+    rd4 += rdd2;
+    
 
-    fixedP.clear();
+    fixedP.clear(); 
     inda.clear();
     indb.clear();
 
+    
+
     if(rv == 0){
         //placing mutations at a distance 2*rd from one another on each haplotype
-        for (j = 0; j < nLv; j++)
-        {
-            rd3 += rd;
-            inda.push_back(rd3);
-
-            rd3 += rd;
-            indb.push_back(rd3);
+        for (j = 0; j < nL; j++){
+            // Chromosomal region with POD zone overlap.
+            if((rd2 >= rd3)&&(rd2 <= rd4)){
+                
+             inda.push_back(rd2);
+            rd2 += rd;
+             indb.push_back(rd2);
+             rd2 += rd;
+                }
+                 // Chromosomal region where only the first POD zone is found: mutations are placed only on the first haplotype
+            else{
+                inda.push_back(rd2);
+                rd2 += 2*rd;
+             }
         }
 
     }
     else{
-        // placing mutons randomly between position rd3 and rd3 + rdd on each haplotype
+        // Random positioning of mutations on each haplotype 
+        //total length of first POD zone
+        rdd1 *=2;
+        //total length of second POD zone
+        rdd2 *=2;
 
-        for (j = 0; j < nLv; j++)
+        for (j = 0; j < nL; j++)
         {
+            // placing mutations randomly between position rd2 and rd2 + rdd1 on first haplotype
+
             do
             {
-                rd4 = rnd.rand(rdd);
-                rd4 += rd3;
+                rd4 = rnd.rand(rdd1);
+                rd4 += rd2;
             } while (find(fixedP.begin(), fixedP.end(), rd4) != fixedP.end());
 
             fixedP.push_back(rd4);
             inda.push_back(rd4);
 
-            do
+            //Sorting positions
+            sort(inda.begin(), inda.end());
+            
+         }
+    
+       // placing mutations randomly between position rd3 and rd3 + rdd2 on second haplotype
+        for (j = 0; j < nLb; j++)
+        {
+           do
             {
-                rd4 = rnd.rand(rdd);
+                rd4 = rnd.rand(rdd2);
                 rd4 += rd3;
             } while (find(fixedP.begin(), fixedP.end(), rd4) != fixedP.end());
             fixedP.push_back(rd4);
             indb.push_back(rd4);
 
             //Sorting positions
-            sort(inda.begin(), inda.end());
             sort(indb.begin(), indb.end());
-
+            
          }
     }
 
+    fhout<< repn << " ";
     //First line of Haplo output file contains all the positions of each locus on each haplotype
-       for(i = 0; i < nLv; i++)
+       for(i = 0; i < nL; i++)
         fhout << inda[i] << " ";
-
-       for(i = 0; i < nLv; i++)
+    
+       for(i = 0; i < nLb; i++)
         fhout << indb[i] << " ";
-
+    
     fhout << endl;
-
+    
     //Second line of Haplo output file indicates whether the mutation was initially on the first or second haplotype
+    fhout << repn<<" ";
 
-    for(i = 0; i < nLv; i++)
+    for(i = 0; i < nL; i++)
         fhout << "1 ";
 
-    for(i = 0; i < nLv; i++)
+    for(i = 0; i < nLb; i++)
         fhout << "2 ";
-
+    
     fhout << endl;
-
-
-
+    
+    
+    
 
         // Re-initialising vectors with POD haplotype information
         fixedP.clear();
 
-        // creating output file containing summary statistics (the name is created using parameter values, this can be modified here):
-        char mainfile[256];
-        stringstream nameM;
-        nameM << "N" << Nv << "_a" << av << "_r" << rv <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_"<< repv << ".txt";
-        nameM >> mainfile;
-        ofstream fout(mainfile);
 
-        //Burn-in simulations are run for each populations to obtain different initial populations
-        for (ns = 0; ns < Gv; ns++) //revoir pour changer iteration de prepop
+        //Burn-in simulations are run twice to obtain two different initial populations
+        for (ns = 0; ns < Gv; ns++)
         {
 
             ind1.sel.clear();
@@ -193,14 +236,14 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             ind1.nlocus = 0;
             fixedP.clear();
             nbFix = 0;
-            for (j = 0; j < twoNG; j++)
+            for (j = 0; j < twoN; j++)
                 pop[j] = ind1;
 
             // Recursion
             for (gen = 0; gen <= nbgenev; gen++)
             {
                 // Introducing mutations
-                for (i = 0; i < twoNG; i++) // for each chromosome
+                for (i = 0; i < twoN; i++) // for each chromosome
                 {
                     // number of new deleterious mutations
                     mut = poisdev(Uv);
@@ -221,11 +264,11 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 //Measuring fitness
                 wbar = 0;
                 wmax = 0;
-                for (j = 0; j < NG; j++)
+                for (j = 0; j < Nv; j++)
                 {
                     nb = 2 * j;
                     // Fitness is calculated using "fitness" function defined in SelRec.cpp.
-                    w = fitness(pop[nb].sel, pop[nb + 1].sel, Whet, Whom);  // here change if want to change for different fitness between groups
+                    w = fitness(pop[nb].sel, pop[nb + 1].sel, Whet, Whom);
 
                     // Storing individual fitnesses
                     Wij[j] = w;
@@ -482,13 +525,13 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
 
             wout /= sampleSv;
 
-            fout << ns - 2 << " " << wbar << " " << 1.0 - (wself / wout) << " " << nbFix << " " << nbdel << " " << hebar << " " << henb << " " << wpod << " " << 0 << " " << 0 << " " << 0 << " " << div << endl;
+            fout<< repn<<" " << ns - 2 << " " << wbar << " " << 1.0 - (wself / wout) << " " << nbFix << " " << nbdel << " " << hebar << " " << henb << " " << wpod << " " << 0 << " " << 0 << " " << 0 << " " << div << endl;
 
             // Ramdomly sampling individuals to create new population with POD zones included
             //Sampling from the first population (first simulation run, POD haplotype saved in vector inda)
             if (ns == 0)
             {
-
+    
                 nb = 0;
                 // After admixture, each initial population would have contributed 50% of the individuals of the new population. This can be changed here (it must also be changed in the following "else" command)
                 nb2 = 0.5 * double(Nv);
@@ -538,7 +581,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
 
         // Initialising population
         for (i = 0; i < twoNG; i++)
-            pop[i] = prepop[i]; //voir en prennant n fois le meme haplotype pour chaque pop
+            pop[i] = prepop[i];
 
         nbFix = 0;
         nbPFix = 0;
@@ -562,7 +605,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                     if (j == twoNG)
                     {
                         nbFix++;
-                        for (k = 0; k < twoNG; k++)
+                        for (k = 0; k < twoN; k++)
                             pop[k].sel.erase(find(pop[k].sel.begin(), pop[k].sel.end(), rd));
                     }
                 }
@@ -633,8 +676,6 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 wpod[g] /= Nv;
                 wpod[g] *= wp;
             }
-
-
 
 
             //Reproduction
@@ -717,10 +758,9 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                     }
                 }
             }
-
-
-
-
+        }
+            
+            
             //Removing fixed mutations and writing populaiton statistics every pasv generations
             if (gen % pasv == 0)
             {
@@ -793,7 +833,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 nb2 = indc.size();
 
                 indc.clear();
-
+               
                 // number of polymorphic loci in POD zones
                 for (i = 0; i < twosampleS; i++)
                 {
@@ -823,7 +863,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                     rd2 = heter(pop[j].pod, pop[j + 1].pod);
                     hebar += rd;
                     hePbar += rd2;
-
+                    
                 }
 
                 hebar /= sampleSv;
@@ -831,8 +871,8 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 hePbar /= sampleSv;
                 hePnb = nb;
 
-
-
+                          
+               
                 // Inbreeding depression calculated using sampleS individuals
                 wout = 0;
                 wself = 0;
@@ -920,20 +960,22 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 wout /= sampleSv;
                 wpout /= sampleSv;
 
-                fout << gen << " " << wbar << " " << 1.0 - (wself / wout) << " " << nbFix << " " << nbdel << " " << hebar << " " << henb << " " << wpod << " " << 1.0 - (wpself / wpout) << " " << nbPFix << " " << hePbar << " " << hePnb << " " << div << endl;
+                fout<< repn<<" " << gen << " " << wbar << " " << 1.0 - (wself / wout) << " " << nbFix << " " << nbdel << " " << hebar << " " << henb << " " << wpod << " " << 1.0 - (wpself / wpout) << " " << nbPFix << " " << hePbar << " " << hePnb << " " << div << endl;
+                
             }
 
-            // Updating population
-            for (i = 0; i < twoNG; i++)
+            // Updating population 
+            for (i = 0; i < twoN; i++)
                 pop[i] = temp[i];
         }
 
         //Writing state of mutations in POD zones in Haplo output file (fixed = 2, segregating = 1 and lost = 0)
+        
 
+        //Mutations initially present on first POD haplotype 
+        fhout << repn<<" ";
 
-        //Mutations initially present on first POD haplotype
-
-        for (i = 0; i < nLv; i++)
+        for (i = 0; i < nL; i++)
         {
 
             if ((fixedP.size() != 0) && (find(fixedP.begin(), fixedP.end(), inda[i]) != fixedP.end()))
@@ -944,7 +986,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             else
             {
                 j = 0;
-                while (j < twoNG)
+                while (j < twoN)
                 {
                     if (find(pop[j].pod.begin(), pop[j].pod.end(), inda[i]) != pop[j].pod.end())
                     {
@@ -961,9 +1003,9 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             }
         }
 
-        //Mutations initially present on second POD haplotype
+        //Mutations initially present on second POD haplotype 
 
-        for (i = 0; i < nLv; i++)
+        for (i = 0; i < nLb; i++)
         {
 
             if ((fixedP.size() != 0) && (find(fixedP.begin(), fixedP.end(), indb[i]) != fixedP.end()))
@@ -992,5 +1034,6 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
         }
 
         fhout << endl;
+}
 
 }
