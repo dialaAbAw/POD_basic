@@ -37,26 +37,21 @@ extern MTRand rnd;
  nbgenv: Total number of generations
  pasv: number of generations between output of simulation results
  repv: identifier number to avoid overwriting different simulations run with the same parameters
- Gv: demes index
- m: migration rate (probality for an offspring to descend from foreign parents)
  */
 
-void recursion(int Nv, double av, int rv, int nLv, double nEqv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
+void recursion(int Nv, double av, int rv, int nLv, double nEqv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv)
 
 {
-    int i, j, k, g, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns, repn;
-    double rd, rd2, rd3, rd4, rdd1, rdd2, w, wfix, wp, wpod, div, nbdel, hebar, henb, wout, wself, wpout, wpself, hePbar, hePnb;
-    
+    int i, j, k, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns, repn;
+    double rd, rd2, rd3, rd4, rdd1, rdd2, w, wbar, wmax, wfix, wp, wpod, div, nbdel, hebar, henb, wout, wself, wpout, wpself, hePbar, hePnb;
 
     int twoN = 2 * Nv;
-    int twoNG = 2 * Nv *Gv;
-    int NG =  Nv *Gv;
     int twosampleS = 2*sampleSv;
 
     // The population is represented as a table containing haploid chromosomes
-    chr pop[twoNG];
-    chr prepop[twoNG];
-    chr temp[twoNG];
+    chr pop[twoN];
+    chr prepop[twoN];
+    chr temp[twoN];
     chr ind1, ind2;
 
     // Vector to store individual identites to generate population susceptible to POD
@@ -72,11 +67,6 @@ void recursion(int Nv, double av, int rv, int nLv, double nEqv, double sPv, doub
 
     // table of fitness values
     double Wij[Nv];
-
-    // table of mean fitness for each deme and for pod , and to store max fitness of each group
-    double wbar[Gv];
-    double wpod[Gv];
-    double wmax[Gv];
 
     // Table to store neutral allele identities and frequencies at a given neutral locus
     std::vector<Nall> Fr;
@@ -99,9 +89,9 @@ void recursion(int Nv, double av, int rv, int nLv, double nEqv, double sPv, doub
     ofstream fout(mainfile);
 
     // Creating POD zones: Positions of mutations are saved in vectors
-    std::vector<double> inds[Gv];
     /*std::vector<double> inda;
-    std::vector<double> indb;*/
+    std::vector<double> indb; */*
+    std::vector<double> inds[Gv];   
     std::vector<double> indc;
     std::vector<double> fixedP;
 
@@ -112,61 +102,46 @@ for (repn = 1; repn <= repv; repn++){
 // Placing the POD zone in the center of the chromosome, with nLv loci on either side of rd2 (a total of 2*nLv loci are positioned, nLv on each haplotype). This can be changed here.
     rd4 = 0.5;
 
-    // Number of mutations on second haplotype
-    int nLb = double(nLv) * nEqv;
-
-    int nL = std::max(nLv, nLb);
-    nLb = std::min(nLv, nLb);
+    /*int nL = std::max(nLv, nLb);
+    nLb = std::min(nLv, nLb); */
     
 
-    // Positioning mutations in the POD zone which is of map length 2*nLv*rd. For rv = 0 in the parameter set, mutaions are equally spaced, if not, then they are placed randomly.
+    // Positioning mutations in the POD zone which is of map length 2*nLv*rd. For rv = 0 in the parameter set, mutations are equally spaced, if not, then they are placed randomly.
+    // total number of initial deleterious mutations
+    int nL = Gv*nLv 
     // half length of first POD zone
     rdd1 = double(nL) *rd;
     // Starting position of POD on first haplotype
     rd2 = rd4 - rdd1;
-    // half length of second POD zone
-    rdd2 = double(nLb)*rd;
-    // Starting position of POD on second haplotype
-    rd3 = rd4 - rdd2;
-    // End position of POD on second haplotype
-    rd4 += rdd2;
+    // End position of POD
+    rd4 += rdd1;
     
 
     fixedP.clear(); 
-    inda.clear();
-    indb.clear();
-
-    
+    for (g=0; g<Gv; g++)
+        {
+            inds[g].clear();
+        }
 
     if(rv == 0){
         //placing mutations at a distance 2*rd from one another on each haplotype
         for (j = 0; j < nL; j++){
             // Chromosomal region with POD zone overlap.
-            if((rd2 >= rd3)&&(rd2 <= rd4)){
-                
-             inda.push_back(rd2);
+            fixedP.push_back(rd2);
             rd2 += rd;
-             indb.push_back(rd2);
-             rd2 += rd;
-                }
-                 // Chromosomal region where only the first POD zone is found: mutations are placed only on the first haplotype
-            else{
-                inda.push_back(rd2);
-                rd2 += 2*rd;
-             }
+            rd3 = (fixedP.size() - 1 ) %% Gv;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert à retomber sur un rang de vecteur entre 0 et Gv-1 
+            inds[rd3].push_back(rd2);
         }
-
     }
+    
     else{
         // Random positioning of mutations on each haplotype 
         //total length of first POD zone
         rdd1 *=2;
-        //total length of second POD zone
-        rdd2 *=2;
 
         for (j = 0; j < nL; j++)
         {
-            // placing mutations randomly between position rd2 and rd2 + rdd1 on first haplotype
+            // placing mutations randomly between position rd2 and rd2 + rdd1
 
             do
             {
@@ -175,28 +150,14 @@ for (repn = 1; repn <= repv; repn++){
             } while (find(fixedP.begin(), fixedP.end(), rd4) != fixedP.end());
 
             fixedP.push_back(rd4);
-            inda.push_back(rd4);
-
-            //Sorting positions
-            sort(inda.begin(), inda.end());
-            
+            rd3 = (fixedP.size() - 1 ) %% Gv;
+            inds[rd3].push_back(rd2);
          }
-    
-       // placing mutations randomly between position rd3 and rd3 + rdd2 on second haplotype
-        for (j = 0; j < nLb; j++)
-        {
-           do
+         
+         for (g = 0; g < Gv; g++)
             {
-                rd4 = rnd.rand(rdd2);
-                rd4 += rd3;
-            } while (find(fixedP.begin(), fixedP.end(), rd4) != fixedP.end());
-            fixedP.push_back(rd4);
-            indb.push_back(rd4);
-
-            //Sorting positions
-            sort(indb.begin(), indb.end());
-            
-         }
+                sort(inds[g].begin(), inds[g].end());
+            }
     }
 
     fhout<< repn << " ";
@@ -228,7 +189,7 @@ for (repn = 1; repn <= repv; repn++){
 
 
         //Burn-in simulations are run twice to obtain two different initial populations
-        for (ns = 0; ns < Gv; ns++)
+        for (ns = 0; ns < 2; ns++)
         {
 
             ind1.sel.clear();
@@ -580,7 +541,7 @@ for (repn = 1; repn <= repv; repn++){
         // Simulations with POD zones
 
         // Initialising population
-        for (i = 0; i < twoNG; i++)
+        for (i = 0; i < twoN; i++)
             pop[i] = prepop[i];
 
         nbFix = 0;
@@ -599,10 +560,10 @@ for (repn = 1; repn <= repv; repn++){
                 {
                     j = 1;
                     rd = pop[0].sel[i];
-                    while ((j < twoNG) &&
+                    while ((j < twoN) &&
                            (find(pop[j].sel.begin(), pop[j].sel.end(), rd) != pop[j].sel.end()))
                         j++;
-                    if (j == twoNG)
+                    if (j == twoN)
                     {
                         nbFix++;
                         for (k = 0; k < twoN; k++)
@@ -615,13 +576,13 @@ for (repn = 1; repn <= repv; repn++){
                 {
                     j = 1;
                     rd = pop[0].pod[i];
-                    while ((j < twoNG) && (find(pop[j].pod.begin(), pop[j].pod.end(), rd) != pop[j].pod.end()))
+                    while ((j < twoN) && (find(pop[j].pod.begin(), pop[j].pod.end(), rd) != pop[j].pod.end()))
                         j++;
-                    if (j == twoNG)
+                    if (j == twoN)
                     {
                        //Saving positions of mutations fixed in the POD zones
                         fixedP.push_back(rd);
-                        for (k = 0; k < twoNG; k++)
+                        for (k = 0; k < twoN; k++)
                             pop[k].pod.erase(find(pop[k].pod.begin(), pop[k].pod.end(), rd));
                     }
                 }
@@ -630,7 +591,7 @@ for (repn = 1; repn <= repv; repn++){
             }
 
             // Introducing mutations
-            for (i = 0; i < twoNG; i++) // for each chromosome
+            for (i = 0; i < twoN; i++) // for each chromosome
             {
                 // number of new deleterious mutations
                 mut = poisdev(Uv);
@@ -649,61 +610,89 @@ for (repn = 1; repn <= repv; repn++){
             }
 
             //Measuring fitness
-
-            for (g = 0; g < Gv; g++)
+            wbar = 0;
+            wpod = 0;
+            wmax = 0;
+            for (j = 0; j < Nv; j++)
             {
-                for (j = 0; j < Nv; j++)
-                {
-                    nb = 2 * j + g * twoN; // for each individuals of each deme
-                    // Fitness is calculated using "fitness" function defined in SelRec.cpp.
-                    w = fitness(pop[nb].sel, pop[nb + 1].sel, Whet, Whom);
-                    wp = fitness(pop[nb].pod, pop[nb + 1].pod, Whetp, Whomp);
-                    w *= wp;
-                    // Storing individual fitnesses
-                    nb = j + g * Nv
-                    Wij[nb] = w;  // nb is used as a placeholder here because it will be reinitialized in later loops
-                    wbar[g] += w;
-                    wpod[g] += wp;
-                    if (wmax[g] < w)
-                        wmax[g] = w;
-                    Wij[nb] /= wmax[g];
-                }
-                //Mean fitnessess taking fixed mutations into account
-                wbar[g] /= Nv;
-                wbar[g] *= pow(Whom, nbFix);
-                wp = pow(Whomp, nbPFix);
-                wbar[g] *= wp;
-                wpod[g] /= Nv;
-                wpod[g] *= wp;
+                nb = 2 * j;
+                // Fitness is calculated using "fitness" function defined in SelRec.cpp.
+                w = fitness(pop[nb].sel, pop[nb + 1].sel, Whet, Whom);
+                wp = fitness(pop[nb].pod, pop[nb + 1].pod, Whetp, Whomp);
+                w *= wp;
+
+                // Storing individual fitnesses
+                Wij[j] = w;
+
+                //Calculating mean population fitness
+                wbar += w;
+                wpod += wp;
+
+                // storing max fitness value
+                if (wmax < w)
+                    wmax = w;
             }
 
+            //Mean fitnessess taking fixed mutations into account
+            wbar /= Nv;
+            wbar *= pow(Whom, nbFix);
+            wp = pow(Whomp, nbPFix);
+            wbar *= wp;
+            wpod /= Nv;
+            wpod *= wp;
+
+            //Normalising fitness values
+            for (i = 0; i < Nv; i++)
+                Wij[i] /= wmax;
+            
 
             //Reproduction
-            for (g = 0; g < Gv; g++)
+            for (j = 0; j < Nv; j++)
             {
-                for (j = 0; j < Nv; j++)
+                nb = 2 * j;
+                // Selecting the maternal individual
+                do
                 {
-                    nb = 2 * j + g * twoN;
+                    i = rnd.randInt(Nv - 1);
 
-                    // ici je remplace g par k, et si il y a migration k est tiré différent de g
-                    if (rnd.rand() > m)
-                    {
-                    k = g;  //no migration, the parents are selected in the same deme as the offspring
-                    }
+                } while (rnd.rand() > Wij[i]);
+
+                pa1 = 2 * i;
+                pa2 = 2 * i + 1;
+
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+
+                // generating the first recombined chromosome
+                if (0.5 < rnd.rand())
+                    rec(ind1, pop[pa1], pop[pa2], nbCo);
+                else
+                    rec(ind1, pop[pa2], pop[pa1], nbCo);
+                temp[nb] = ind1;
+
+                // Selecting paternal individual
+                // selfing:
+                if (rnd.rand() < av)
+                {
+                    // sampling the number of crossovers
+                    nbCo = int(poisdev(Lv));
+
+                    if (0.5 < rnd.rand())
+                        rec(ind1, pop[pa1], pop[pa2], nbCo);
                     else
-                    {
-                    k= rnd.randInt(Gv);
+                        rec(ind1, pop[pa2], pop[pa1], nbCo);
+                    temp[nb + 1] = ind1;
+                }
+                // Outcrossing
+                else
+                {
                     do
                     {
-                       k= rnd.randInt(Gv);
-                    } while (k==g);
-
-                    // Selecting the maternal individual
-                    do
-                    {
-                        i = rnd.randInt(Nv - 1) + k * Nv ;
+                        i = rnd.randInt(Nv - 1);
 
                     } while (rnd.rand() > Wij[i]);
+
+
                     pa1 = 2 * i;
                     pa2 = 2 * i + 1;
 
@@ -715,52 +704,11 @@ for (repn = 1; repn <= repv; repn++){
                         rec(ind1, pop[pa1], pop[pa2], nbCo);
                     else
                         rec(ind1, pop[pa2], pop[pa1], nbCo);
-                    temp[nb] = ind1;
-
-
-                    // Selecting paternal individual
-
-                    // selfing:
-                    if (rnd.rand() < av)
-                    {
-                        // sampling the number of crossovers
-                        nbCo = int(poisdev(Lv));
-
-                        if (0.5 < rnd.rand())
-                            rec(ind1, pop[pa1], pop[pa2], nbCo);
-                        else
-                            rec(ind1, pop[pa2], pop[pa1], nbCo);
-                        temp[nb + 1] = ind1;
-                    }
-
-                    // Outcrossing
-                    else
-                    {
-                        do
-                        {
-                            i = rnd.randInt(Nv - 1) + Nv * k;
-
-                        } while (rnd.rand() > Wij[i]);
-
-
-                        pa1 = 2 * i;
-                        pa2 = 2 * i + 1;
-
-                        // sampling the number of crossovers
-                        nbCo = int(poisdev(Lv));
-
-                        // generating the first recombined chromosome
-                        if (0.5 < rnd.rand())
-                            rec(ind1, pop[pa1], pop[pa2], nbCo);
-                        else
-                            rec(ind1, pop[pa2], pop[pa1], nbCo);
-                        temp[nb + 1] = ind1;
-                    }
+                    temp[nb + 1] = ind1;
                 }
             }
-        }
-            
-            
+
+
             //Removing fixed mutations and writing populaiton statistics every pasv generations
             if (gen % pasv == 0)
             {
@@ -776,7 +724,7 @@ for (repn = 1; repn <= repv; repn++){
                 {
                     do
                     {
-                        nb3 = rnd.randInt(NG - 1);
+                        nb3 = rnd.randInt(Nv - 1);
                         nb3 *= 2;
 
                     } while (find(Pos.begin(), Pos.end(), nb3) != Pos.end());
@@ -830,7 +778,7 @@ for (repn = 1; repn <= repv; repn++){
 
                 nbdel /= double(twosampleS);
 
-                nb2 = indc.size();
+                nb2 = indc.size(); 
 
                 indc.clear();
                
@@ -867,7 +815,7 @@ for (repn = 1; repn <= repv; repn++){
                 }
 
                 hebar /= sampleSv;
-                henb = nb2 + nb;
+                henb = nb2 + nb; //toutes les mutations polymorphes dans la population
                 hePbar /= sampleSv;
                 hePnb = nb;
 
@@ -882,7 +830,7 @@ for (repn = 1; repn <= repv; repn++){
                 // Selfed offspring:
                 for (j = 0; j < sampleSv; j++)
                 {
-                    pa1 = 2 * (rnd.randInt(NG - 1));
+                    pa1 = 2 * (rnd.randInt(Nv - 1));
 
                     //Recombination to create 1st chromosome
                     // sampling the number of crossovers
@@ -1022,7 +970,7 @@ for (repn = 1; repn <= repv; repn++){
                     {
                         fhout << "1 ";
                         break;
-                    }
+                    }  
                     j++;
                 }
 
