@@ -90,8 +90,9 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
     ofstream fhout(haplofile);
 
     // Creating POD zones: Positions of mutations are saved in vectors
-    std::vector<double> inda;
-    std::vector<double> indb;
+    std::vector<double> inds[Gv];
+    /*std::vector<double> inda;
+    std::vector<double> indb;*/
     std::vector<double> indc;
     std::vector<double> fixedP;
 
@@ -610,7 +611,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             {
                 for (j = 0; j < Nv; j++)
                 {
-                    nb = 2 * j + g * Nv * 2; // for each individuals of each deme
+                    nb = 2 * j + g * twoN; // for each individuals of each deme
                     // Fitness is calculated using "fitness" function defined in SelRec.cpp.
                     w = fitness(pop[nb].sel, pop[nb + 1].sel, Whet, Whom);
                     wp = fitness(pop[nb].pod, pop[nb + 1].pod, Whetp, Whomp);
@@ -641,8 +642,8 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             {
                 for (j = 0; j < Nv; j++)
                 {
-                    nb = 2 * j + g * Nv * 2;
-                 
+                    nb = 2 * j + g * twoN;
+
                     // ici je remplace g par k, et si il y a migration k est tiré différent de g
                     if (rnd.rand() > m)
                     {
@@ -653,7 +654,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                     k= rnd.randInt(Gv);
                     do
                     {
-                       k= rnd.randInt(Gv); 
+                       k= rnd.randInt(Gv);
                     } while (k==g);
 
                     // Selecting the maternal individual
@@ -735,7 +736,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 {
                     do
                     {
-                        nb3 = rnd.randInt(Nv - 1);
+                        nb3 = rnd.randInt(NG - 1);
                         nb3 *= 2;
 
                     } while (find(Pos.begin(), Pos.end(), nb3) != Pos.end());
@@ -841,7 +842,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
                 // Selfed offspring:
                 for (j = 0; j < sampleSv; j++)
                 {
-                    pa1 = 2 * (rnd.randInt(Nv - 1));
+                    pa1 = 2 * (rnd.randInt(NG - 1));
 
                     //Recombination to create 1st chromosome
                     // sampling the number of crossovers
@@ -923,7 +924,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             }
 
             // Updating population
-            for (i = 0; i < twoN; i++)
+            for (i = 0; i < twoNG; i++)
                 pop[i] = temp[i];
         }
 
@@ -943,7 +944,7 @@ void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, doubl
             else
             {
                 j = 0;
-                while (j < twoN)
+                while (j < twoNG)
                 {
                     if (find(pop[j].pod.begin(), pop[j].pod.end(), inda[i]) != pop[j].pod.end())
                     {
