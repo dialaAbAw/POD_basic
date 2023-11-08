@@ -138,7 +138,7 @@ for (repn = 1; repn <= repv; repn++){
             // Chromosomal region with POD zone overlap.
             fixedP.push_back(rd2);
             rd2 += rd;
-            rd3 = (fixedP.size() - 1 ) %% nbtype;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert à retomber sur un rang de vecteur entre 0 et Gv-1
+            rd3 = (fixedP.size() - 1 ) % nbtype;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert à retomber sur un rang de vecteur entre 0 et Gv-1
             inds[rd3].push_back(rd2);
         }
     }
@@ -159,7 +159,7 @@ for (repn = 1; repn <= repv; repn++){
             } while (find(fixedP.begin(), fixedP.end(), rd4) != fixedP.end());
 
             fixedP.push_back(rd4);
-            rd3 = (fixedP.size() - 1 ) %% nbtype;
+            rd3 = (fixedP.size() - 1 ) % nbtype;
             inds[rd3].push_back(rd2);
          }
 
@@ -191,7 +191,7 @@ for (repn = 1; repn <= repv; repn++){
         fixedP.clear();
 
 
-        //Burn-in simulations are run twice to obtain two different initial populations
+        //Burn-in simulations are run for each deme (Gv times) to obtain different initial populations
         for (ns = 0; ns < Gv; ns++)
         {
 
@@ -200,14 +200,14 @@ for (repn = 1; repn <= repv; repn++){
             ind1.nlocus = 0;
             fixedP.clear();
             nbFix = 0;
-            for (j = 0; j < twoN; j++)
+            for (j = 0; j < twoNG; j++)
                 pop[j] = ind1;
 
             // Recursion
             for (gen = 0; gen <= nbgenev; gen++)
             {
                 // Introducing mutations
-                for (i = 0; i < twoN; i++) // for each chromosome
+                for (i = 0; i < twoNG; i++) // for each chromosome
                 {
                     // number of new deleterious mutations
                     mut = poisdev(Uv);
@@ -226,46 +226,41 @@ for (repn = 1; repn <= repv; repn++){
                 }
 
                 //Measuring fitness
-                wbar = 0;
-                wmax = 0;
+
+            for (g = 0; g < Gv; g++)
+            {
                 for (j = 0; j < Nv; j++)
                 {
-                    nb = 2 * j;
+                    nb = 2 * j + g * twoN; // for each individuals of each deme
                     // Fitness is calculated using "fitness" function defined in SelRec.cpp.
                     w = fitness(pop[nb].sel, pop[nb + 1].sel, Whet, Whom);
-
                     // Storing individual fitnesses
-                    Wij[j] = w;
-
-                    //Calculating mean population fitness
-                    wbar += w;
-
-                    // storing max fitness value
-                    if (wmax < w)
-                        wmax = w;
+                    nb = j + g * Nv
+                    Wij[nb] = w;  // nb is used as a placeholder here because it will be reinitialized in later loops
+                    wbar[g] += w;
+                    if (wmax[g] < w)
+                        wmax[g] = w;
+                    Wij[nb] /= wmax[g];
                 }
-
                 //Mean fitnessess taking fixed mutations into account
-                wbar /= Nv;
-                wbar *= pow(Whom, nbFix);
+                wbar[g] /= Nv;
+                wbar[g] *= pow(Whom, nbFix);
+            }
 
-                //Normalising fitness values
-                for (i = 0; i < Nv; i++)
-                {
-                    Wij[i] /= wmax;
-                }
-
-                //Reproduction
+            //Reproduction
+            for (g = 0; g < Gv; g++)
+            {
                 for (j = 0; j < Nv; j++)
                 {
-                    nb = 2 * j;
+                    nb = 2 * j + g * twoN;
+
+
                     // Selecting the maternal individual
                     do
                     {
-                        i = rnd.randInt(Nv - 1);
+                        i = rnd.randInt(Nv - 1) + g * Nv ;
 
                     } while (rnd.rand() > Wij[i]);
-
                     pa1 = 2 * i;
                     pa2 = 2 * i + 1;
 
@@ -279,7 +274,9 @@ for (repn = 1; repn <= repv; repn++){
                         rec(ind1, pop[pa2], pop[pa1], nbCo);
                     temp[nb] = ind1;
 
+
                     // Selecting paternal individual
+
                     // selfing:
                     if (rnd.rand() < av)
                     {
@@ -292,14 +289,16 @@ for (repn = 1; repn <= repv; repn++){
                             rec(ind1, pop[pa2], pop[pa1], nbCo);
                         temp[nb + 1] = ind1;
                     }
+
                     // Outcrossing
                     else
                     {
                         do
                         {
-                            i = rnd.randInt(Nv - 1);
+                            i = rnd.randInt(Nv - 1) + Nv * g;
 
                         } while (rnd.rand() > Wij[i]);
+
 
                         pa1 = 2 * i;
                         pa2 = 2 * i + 1;
@@ -315,9 +314,11 @@ for (repn = 1; repn <= repv; repn++){
                         temp[nb + 1] = ind1;
                     }
                 }
+            }
+            // comment remplir deme avec les haplo si Gv!=nbtype ? boucler burn in sur nbtype ?
 
                 // Updating population
-                for (i = 0; i < twoN; i++)
+                for (i = 0; i < twoNG; i++)
                     pop[i] = temp[i];
 
                 //Removing fixed mutations every pasv generations
@@ -490,6 +491,18 @@ for (repn = 1; repn <= repv; repn++){
             wout /= sampleSv;
 
             fout<< repn<<" " << ns - 2 << " " << wbar << " " << 1.0 - (wself / wout) << " " << nbFix << " " << nbdel << " " << hebar << " " << henb << " " << wpod << " " << 0 << " " << 0 << " " << 0 << " " << div << endl;
+
+            // assignation of each haplotype in each deme
+            // if there are more haplotypes than groups, all the last groups will contain the same haplotype
+            // ATENTION WIP PAS LA BONNE BOUCLE !!!!!!
+            for (g=0; g<Gv; g++){
+                do {
+                    k = g;
+                }while (g < nbtype);
+                for(i=0; i<Nv; i++){
+                    pop[nb].pod = inds[k]
+                }
+            }
 
             // Ramdomly sampling individuals to create new population with POD zones included
             //Sampling from the first population (first simulation run, POD haplotype saved in vector inda)
