@@ -40,11 +40,13 @@ extern MTRand rnd;
  m: migration rate (probality for an offspring to descend from foreign parents)
  */
 
+ 
+ //  A FAIRE : enlever var non appel√©es du call initial et des fout fhout
 void recursion(int Nv, double av, int nLv, double nEqv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
 
 {
     int i, j, k, g, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns, repn;
-    double rd, rd2, rd3, rd4, rdd1, rdd2, w, wfix, wp, wpod, div, nbdel, hebar, henb, wout, wself, wpout, wpself, hePbar, hePnb;
+    double rd, rd2, rd3, rd4, rdd1, rdd2, w, wfix, wp, wpod, div, nbdel, hebar, henb, wout_intra, wout_inter, wself;
 
 
     int twoN = 2 * Nv;
@@ -127,7 +129,7 @@ for (repn = 1; repn <= repv; repn++){
         // Chromosomal region with POD zone overlap.
         fixedP.push_back(rd2);
         rd2 += rd;
-        rd3 = (fixedP.size() - 1 ) % Gv;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert ‡ retomber sur un rang de vecteur entre 0 et Gv-1
+        rd3 = (fixedP.size() - 1 ) % Gv;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert √† retomber sur un rang de vecteur entre 0 et Gv-1
         inds[rd3].push_back(rd2);
     }
 
@@ -153,7 +155,7 @@ for (repn = 1; repn <= repv; repn++){
 
     // assignation of each haplotype in each deme
     for (g=0; g<Gv; g++){
-        j = g*twoN;
+        j = g*twoN;                 
         for (i = j; i < j+twoN; i++){
             pop[i].pod = inds[g]
         }
@@ -200,6 +202,10 @@ for (repn = 1; repn <= repv; repn++){
                 wbar[g] += w;
                 if (wmax[g] < w)
                     wmax[g] = w;
+            }
+            for (j = 0; j < Nv; j++)  // we need twice the same loop in order to use the real max value of wmax
+            {
+                nb = 2 * j + g * twoN;
                 Wij[nb] /= wmax[g];
             }
             //Mean fitnessess taking fixed mutations into account
@@ -214,17 +220,18 @@ for (repn = 1; repn <= repv; repn++){
             {
                 nb = 2 * j + g * twoN;
 
-                // ici je remplace g par k, et si il y a migration k est tirÈ diffÈrent de g
+                // ici je remplace g par k, et si il y a migration k est tir√© diff√©rent de g
                 if (rnd.rand() > m)
                 {
-                k = g;  //no migration, the parents are selected in the same deme as the offspring
+                    k = g;  //no migration, the parents are selected in the same deme as the offspring
                 }
                 else
                 {
-                do
-                {
-                   k= rnd.randInt(Gv);
-                } while (k==g);}
+                    do
+                    {
+                        k = rnd.randInt(Gv);
+                    } while (k==g);
+                }
 
                 // Selecting the maternal individual
                 do
@@ -286,25 +293,146 @@ for (repn = 1; repn <= repv; repn++){
                 }
             }
         }
-    }
+    
 
 
     // writing population statistics every pasv generations
     if (gen % pasv == 0){
 
         // Number of deleterious mutations per chromosome, compiling list of loci carrying mutations and calculating diversity at free recombing neutral locus
-        indc.clear();
-        nbdel = 0;
-        Pos.clear();
+        wout_intra = 0;
+        wself = 0;
+        wout_inter = 0; 
 
-       //Randomly selecting sampleSv individuals on which to measure summary statistics
+       //Randomly selecting sampleSv individuals in each deme on which to measure summary statistics
         for ( g = 0; g <Gv; g++)
         {
-            for (i = 0; i < sampleSv; i++)
+            // Inbreeding depression calculated using sampleS individuals
+
+            // Selfed offspring:
+            for (j = 0; j < sampleSv; j++)
+            {
+                pa1 = 2 * (rnd.randInt(Nv - 1))+g*Nv;
+
+                //Recombination to create 1st chromosome
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+                rd = rnd.rand();
+
+                if (rd < 0.5)
+                    rec(ind1, pop[pa1], pop[pa1 + 1], nbCo);
+                else
+                    rec(ind1, pop[pa1 + 1], pop[pa1], nbCo);
+
+                //Recombination to create 2nd chromosome
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+
+                rd = rnd.rand();
+                if (rd < 0.5)
+                    rec(ind2, pop[pa1], pop[pa1 + 1], nbCo);
+                else
+                    rec(ind2, pop[pa1 + 1], pop[pa1], nbCo);
+
+                w = fitness(ind1.sel, ind2.sel, Whet, Whom);
+                wself += w;
+            }
+            
+
+            // Outcrossed offspring intra deme:
+
+            for (j = 0; j < sampleSv; j++)
+            {
+                pa1 = int(rnd.randInt(Nv - 1))+g*Nv;
+
+                do
+                {
+                    pa2 = rnd.randInt(Nv - 1)+g*Nv;
+                } while (pa2 == pa1);
+
+                pa1 *= 2;
+                pa2 *= 2;
+
+                // first chromosome
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+
+                rd = rnd.rand();
+
+                if (rd < 0.5)
+                    rec(ind1, pop[pa1], pop[pa1 + 1], nbCo);
+                else
+                    rec(ind1, pop[pa1 + 1], pop[pa1], nbCo);
+
+                // second chromosome
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+
+                rd = rnd.rand();
+
+                if (rd < 0.5)
+                    rec(ind2, pop[pa2], pop[pa2 + 1], nbCo);
+                else
+                    rec(ind2, pop[pa2 + 1], pop[pa2], nbCo);
+
+                w = fitness(ind1.sel, ind2.sel, Whet, Whom);
+                wout_intra += w;
+            }
+            
+            // Outcrossed offspring whole pop:
+
+            for (j = 0; j < sampleSv; j++)
+            {
+                pa1 = int(rnd.randInt(Nv - 1))+g*Nv;
+
+                do
+                {
+                    pa2 = rnd.randInt(NG - 1);
+                } while (pa2 == pa1);
+
+                pa1 *= 2;
+                pa2 *= 2;
+
+                // first chromosome
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+
+                rd = rnd.rand();
+
+                if (rd < 0.5)
+                    rec(ind1, pop[pa1], pop[pa1 + 1], nbCo);
+                else
+                    rec(ind1, pop[pa1 + 1], pop[pa1], nbCo);
+
+                // second chromosome
+                // sampling the number of crossovers
+                nbCo = int(poisdev(Lv));
+
+                rd = rnd.rand();
+
+                if (rd < 0.5)
+                    rec(ind2, pop[pa2], pop[pa2 + 1], nbCo);
+                else
+                    rec(ind2, pop[pa2 + 1], pop[pa2], nbCo);
+
+                w = fitness(ind1.sel, ind2.sel, Whet, Whom);
+                wout_inter += w;
+            }
+        }
+        
+        wout_intra /= sampleSv * Gv; // repetition of sampleSv * Gv, maybe metre un placeholder name
+        wout_inter /= sampleSv * Gv;
+        wself /= sampleSv * Gv;
+            
+            Fr.clear();
+            Pos.clear();
+            indc.clear();
+            nbdel = 0;
+            for (i = 0; i < sampleSv* Gv; i++)
             {
                 do
                 {
-                    nb3 = rnd.randInt(Nv - 1) + g * Nv;
+                    nb3 = rnd.randInt(NG - 1);
                     nb3 *= 2;
 
                 } while (find(Pos.begin(), Pos.end(), nb3) != Pos.end());
@@ -314,9 +442,9 @@ for (repn = 1; repn <= repv; repn++){
 
             }
 
-            for (i = 0; i < twosampleS; i++)
+            for (i = 0; i < twosampleS*Gv; i++) //meh 
             {
-                nb = i + g * twoN;
+                nb = i ;
                 nb3 = Pos[nb];
                 k = pop[nb3].sel.size();
                 nbdel += k;
@@ -327,9 +455,49 @@ for (repn = 1; repn <= repv; repn++){
                     if (find(indc.begin(), indc.end(), pop[nb3].sel[j]) == indc.end())
                         indc.push_back(pop[nb3].sel[j]);
                 }
-                sort(indc.begin(), indc.end());
-            }
-        fout << gen << " " << 1.0 - (wself / wout) << hebar << " " << henb << endl // manque calcul henb
-        }
+                sort(indc.begin(), indc.end());  
+                
+                //Identifying and counting neutral alleles
+                nb = Fr.size();
+                for (j = 0; j < nb; j++)
+                    if (Fr[j].all == pop[nb3].nlocus)
+                    {
+                        Fr[j].freq++;
+                        break;
+                    }
+                if (j == nb)
+                {
+                    alltemp.all = pop[nb3].nlocus;
+                    alltemp.freq = 1;
+                    Fr.push_back(alltemp);              
+                }
+                
+                nbdel /= double(twosampleS*Gv);
+                nb2 = indc.size();
+                indc.clear();
 
+                // number of polymorphic loci in POD zones
+                for (i = 0; i < twosampleS*Gv; i++)
+                {
+                    nb3 = Pos[i];
+                    k = pop[nb3].pod.size();
+                    for (j = 0; j < k; j++)
+                    {
+                        if (find(indc.begin(), indc.end(), pop[nb3].pod[j]) == indc.end())
+                            indc.push_back(pop[nb3].pod[j]);
+                    }
+
+                    sort(indc.begin(), indc.end());
+                }
+
+                nb = indc.size();
+                
+                henb = nb2 + nb; 
+            }
+            fout << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbfix << " " << henb << endl;
+        }
+    // Updating population
+            for (i = 0; i < twoN*Gv; i++)
+                pop[i] = temp[i];
+         
 }
