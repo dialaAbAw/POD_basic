@@ -53,7 +53,7 @@ void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv
     int NG =  Nv *Gv;
     int twosampleS = 2*sampleSv;
     int twosampleSG = 2*sampleSv*Gv;
-    int sampleSG = sampleSv*Gv;             // maybe regarder combien de fois il sers
+    int sampleSG = sampleSv*Gv;             // maybe regarder combien de fois il sert
 
     // The population is represented as a table containing haploid chromosomes
     chr pop[twoNG];
