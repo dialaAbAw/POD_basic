@@ -103,10 +103,11 @@ void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv
 
 
 
-for (repn = 1; repn <= repv; repn++){
-// Scaling physical distance in relation to the full chromosome map length
+for (repn = 1; repn <= repv; repn++)
+{
+    // Scaling physical distance in relation to the full chromosome map length
     rd = linkPv / (Lv);
-// Placing the POD zone in the center of the chromosome, with nLv loci on either side of rd2 (a total of 2*nLv loci are positioned, nLv on each haplotype). This can be changed here.
+    // Placing the POD zone in the center of the chromosome, with nLv loci on either side of rd2 (a total of 2*nLv loci are positioned, nLv on each haplotype). This can be changed here.
     rd4 = 0.5;
 
     // Positioning mutations in the POD zone which is of map length 2*nLv*rd. For rv = 0 in the parameter set, mutations are equally spaced, if not, then they are placed randomly.
@@ -126,7 +127,8 @@ for (repn = 1; repn <= repv; repn++){
 
 
     //placing mutations at a distance 2*rd from one another on each haplotype
-    for (j = 0; j < nL; j++){
+    for (j = 0; j < nL; j++)
+    {
         // Chromosomal region with POD zone overlap.
         fixedP.push_back(rd2);
         rd2 += rd;
@@ -136,7 +138,8 @@ for (repn = 1; repn <= repv; repn++){
 
     //First line of Haplo output file contains all the positions of each locus on each haplotype
     fhout<< repn << " ";
-    for(g = 0; g < Gv; g++){
+    for(g = 0; g < Gv; g++)
+    {
         for(i = 0; i < nLv; i++)
             fhout << inds[g][i] << " ";
     }
@@ -145,7 +148,8 @@ for (repn = 1; repn <= repv; repn++){
     //Second line of Haplo output file indicates whether the mutation was initially on the first or second haplotype
     fhout << repn<<" ";
 
-    for(g = 0; g < Gv; g++){
+    for(g = 0; g < Gv; g++)
+    {
         for(i = 0; i < nLv; i++)
             fhout << g << " ";
     }
@@ -155,9 +159,11 @@ for (repn = 1; repn <= repv; repn++){
     fixedP.clear();
 
     // assignation of each haplotype in each deme
-    for (g=0; g<Gv; g++){
+    for (g=0; g<Gv; g++)
+    {
         j = g*twoN;
-        for (i = j; i < j+twoN; i++){
+        for (i = j; i < j+twoN; i++)
+        {
             pop[i].pod = inds[g];
         }
     }
@@ -298,8 +304,8 @@ for (repn = 1; repn <= repv; repn++){
 
 
     // writing population statistics every pasv generations
-    if (gen % pasv == 0){
-
+    if (gen % pasv == 0)
+    {
         // Number of deleterious mutations per chromosome, compiling list of loci carrying mutations and calculating diversity at free recombing neutral locus
         wout_intra = 0;
         wself = 0;
@@ -497,11 +503,11 @@ for (repn = 1; repn <= repv; repn++){
         }
         fout << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbPFix << " " << henb << endl;
     }
-// Updating population
-        for (i = 0; i < twoNG ; i++)
-            pop[i] = temp[i];
+    // Updating population
+    for (i = 0; i < twoNG ; i++)
+        pop[i] = temp[i];
 
-    }
+ }
     //Writing state of mutations in POD zones in Haplo output file (fixed = 2, segregating = 1 and lost = 0)
 
 for (g=0; g<Gv; g++){
