@@ -40,7 +40,7 @@ extern MTRand rnd;
  m: migration rate (probality for an offspring to descend from foreign parents)
  */
 
- 
+
  //  A FAIRE : enlever var non appelées du call initial et des fout fhout
 void recursion(int Nv, double av, int nLv, double nEqv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
 
@@ -53,6 +53,8 @@ void recursion(int Nv, double av, int nLv, double nEqv, double sPv, double hPv, 
     int twoNG = 2 * Nv *Gv;
     int NG =  Nv *Gv;
     int twosampleS = 2*sampleSv;
+    int twosampleSG = 2*sampleSv*Gv;
+    int sampleSG = sampleSv*Gv;             // maybe regarder combien de fois il sers
 
     // The population is represented as a table containing haploid chromosomes
     chr pop[twoNG];
@@ -84,14 +86,14 @@ void recursion(int Nv, double av, int nLv, double nEqv, double sPv, double hPv, 
     // creating Haplo output file storing positions and states of mutations in POD zones at the end of simulations (the name is created using parameter values, this can be modified here):
     char haplofile[256];
     stringstream nameH;
-    nameH << "N" << Nv << "_a" << av << "_r" << rv <<"_nL" << nLv <<"_nEq"<< nEqv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_Haplo.txt";
+    nameH << "N" << Nv << "_a" << av << "_G" << Gv << "_m" << m <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_Haplo_minimal.txt";
     nameH >> haplofile;
     ofstream fhout(haplofile);
 
     // creating output file containing summary statistics (the name is created using parameter values, this can be modified here):
     char mainfile[256];
     stringstream nameM;
-     nameM << "N" << Nv << "_a" << av << "_r" << rv <<"_nL" << nLv <<"_nEq"<< nEqv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << ".txt";
+    nameM << "N" << Nv << "_a" << av << "_G" << Gv << "_m" << m <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_minimal.txt";
     nameM >> mainfile;
     ofstream fout(mainfile);
 
@@ -155,7 +157,7 @@ for (repn = 1; repn <= repv; repn++){
 
     // assignation of each haplotype in each deme
     for (g=0; g<Gv; g++){
-        j = g*twoN;                 
+        j = g*twoN;
         for (i = j; i < j+twoN; i++){
             pop[i].pod = inds[g]
         }
@@ -293,7 +295,7 @@ for (repn = 1; repn <= repv; repn++){
                 }
             }
         }
-    
+
 
 
     // writing population statistics every pasv generations
@@ -302,7 +304,7 @@ for (repn = 1; repn <= repv; repn++){
         // Number of deleterious mutations per chromosome, compiling list of loci carrying mutations and calculating diversity at free recombing neutral locus
         wout_intra = 0;
         wself = 0;
-        wout_inter = 0; 
+        wout_inter = 0;
 
        //Randomly selecting sampleSv individuals in each deme on which to measure summary statistics
         for ( g = 0; g <Gv; g++)
@@ -337,7 +339,7 @@ for (repn = 1; repn <= repv; repn++){
                 w = fitness(ind1.sel, ind2.sel, Whet, Whom);
                 wself += w;
             }
-            
+
 
             // Outcrossed offspring intra deme:
 
@@ -378,7 +380,7 @@ for (repn = 1; repn <= repv; repn++){
                 w = fitness(ind1.sel, ind2.sel, Whet, Whom);
                 wout_intra += w;
             }
-            
+
             // Outcrossed offspring whole pop:
 
             for (j = 0; j < sampleSv; j++)
@@ -419,85 +421,122 @@ for (repn = 1; repn <= repv; repn++){
                 wout_inter += w;
             }
         }
-        
-        wout_intra /= sampleSv * Gv; // repetition of sampleSv * Gv, maybe metre un placeholder name
-        wout_inter /= sampleSv * Gv;
-        wself /= sampleSv * Gv;
-            
-            Fr.clear();
-            Pos.clear();
-            indc.clear();
-            nbdel = 0;
-            for (i = 0; i < sampleSv* Gv; i++)
+
+        wout_intra /= sampleSG;
+        wout_inter /= sampleSG;
+        wself /= sampleSG;
+
+        Fr.clear();
+        Pos.clear();
+        indc.clear();
+        nbdel = 0;
+        for (i = 0; i < sampleSG; i++)
+        {
+            do
             {
-                do
+                nb3 = rnd.randInt(NG - 1);
+                nb3 *= 2;
+
+            } while (find(Pos.begin(), Pos.end(), nb3) != Pos.end());
+
+            Pos.push_back(nb3);
+            Pos.push_back(nb3+1);
+
+        }
+
+        for (i = 0; i < twosampleSG; i++) //meh
+        {
+            nb = i ;
+            nb3 = Pos[nb];
+            k = pop[nb3].sel.size();
+            nbdel += k;
+
+          // number of polymorphic loci in the genome (excluding initial mutations introduced the POD zones)
+            for (j = 0; j < k; j++)
+            {
+                if (find(indc.begin(), indc.end(), pop[nb3].sel[j]) == indc.end())
+                    indc.push_back(pop[nb3].sel[j]);
+            }
+            sort(indc.begin(), indc.end());
+
+            //Identifying and counting neutral alleles
+            nb = Fr.size();
+            for (j = 0; j < nb; j++)
+                if (Fr[j].all == pop[nb3].nlocus)
                 {
-                    nb3 = rnd.randInt(NG - 1);
-                    nb3 *= 2;
-
-                } while (find(Pos.begin(), Pos.end(), nb3) != Pos.end());
-
-                Pos.push_back(nb3);
-                Pos.push_back(nb3+1);
-
+                    Fr[j].freq++;
+                    break;
+                }
+            if (j == nb)
+            {
+                alltemp.all = pop[nb3].nlocus;
+                alltemp.freq = 1;
+                Fr.push_back(alltemp);
             }
 
-            for (i = 0; i < twosampleS*Gv; i++) //meh 
-            {
-                nb = i ;
-                nb3 = Pos[nb];
-                k = pop[nb3].sel.size();
-                nbdel += k;
+            nbdel /= double(twosampleSG);
+            nb2 = indc.size();
+            indc.clear();
 
-              // number of polymorphic loci in the genome (excluding initial mutations introduced the POD zones)
+            // number of polymorphic loci in POD zones
+            for (i = 0; i < twosampleSG; i++)
+            {
+                nb3 = Pos[i];
+                k = pop[nb3].pod.size();
                 for (j = 0; j < k; j++)
                 {
-                    if (find(indc.begin(), indc.end(), pop[nb3].sel[j]) == indc.end())
-                        indc.push_back(pop[nb3].sel[j]);
-                }
-                sort(indc.begin(), indc.end());  
-                
-                //Identifying and counting neutral alleles
-                nb = Fr.size();
-                for (j = 0; j < nb; j++)
-                    if (Fr[j].all == pop[nb3].nlocus)
-                    {
-                        Fr[j].freq++;
-                        break;
-                    }
-                if (j == nb)
-                {
-                    alltemp.all = pop[nb3].nlocus;
-                    alltemp.freq = 1;
-                    Fr.push_back(alltemp);              
-                }
-                
-                nbdel /= double(twosampleS*Gv);
-                nb2 = indc.size();
-                indc.clear();
-
-                // number of polymorphic loci in POD zones
-                for (i = 0; i < twosampleS*Gv; i++)
-                {
-                    nb3 = Pos[i];
-                    k = pop[nb3].pod.size();
-                    for (j = 0; j < k; j++)
-                    {
-                        if (find(indc.begin(), indc.end(), pop[nb3].pod[j]) == indc.end())
-                            indc.push_back(pop[nb3].pod[j]);
-                    }
-
-                    sort(indc.begin(), indc.end());
+                    if (find(indc.begin(), indc.end(), pop[nb3].pod[j]) == indc.end())
+                        indc.push_back(pop[nb3].pod[j]);
                 }
 
-                nb = indc.size();
-                
-                henb = nb2 + nb; 
+                sort(indc.begin(), indc.end());
             }
-            fout << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbfix << " " << henb << endl;
+
+            nb = indc.size();
+
+            henb = nb2 + nb;
         }
-    // Updating population
-            for (i = 0; i < twoN*Gv; i++)
-                pop[i] = temp[i];
-         
+        fout << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbfix << " " << henb << endl;
+    }
+// Updating population
+        for (i = 0; i < twoNG ; i++)
+            pop[i] = temp[i];
+
+    }
+    //Writing state of mutations in POD zones in Haplo output file (fixed = 2, segregating = 1 and lost = 0)
+
+for (g=0,g<Gv,g++){
+    //Mutations initially present on first POD haplotype
+    fhout << repn<<" ";
+
+    for (i = 0; i < nL; i++)
+    {
+
+        if ((fixedP.size() != 0) && (find(fixedP.begin(), fixedP.end(), inds[g][i]) != fixedP.end()))
+        {
+            fhout << "2 ";
+            continue;
+        }
+        else
+        {
+            j = 0;
+            while (j < twoNG)
+            {
+                if (find(pop[j].pod.begin(), pop[j].pod.end(), inds[g][i]) != pop[j].pod.end())
+                {
+                    fhout << "1 ";
+                    break;
+                }
+                j++;
+            }
+
+            if (j == twoNG)
+            {
+                fhout << "0 ";
+            }
+        }
+    }
+}
+fhout << endl;
+}
 }
