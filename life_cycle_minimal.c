@@ -41,12 +41,11 @@ extern MTRand rnd;
  */
 
 
- //  A FAIRE : enlever var non appelées du call initial et des fout fhout
-void recursion(int Nv, double av, int nLv, double nEqv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv, int Gv, double m)
+void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv, double Lv, int sampleSv, int nbgenv, int pasv, int repv, int Gv, double m)
 
 {
-    int i, j, k, g, nb, nb2, nb3, gen, mut, pa1, pa2, nbCo, nbFix, nbPFix, ns, repn;
-    double rd, rd2, rd3, rd4, rdd1, rdd2, w, wfix, wp, wpod, div, nbdel, hebar, henb, wout_intra, wout_inter, wself;
+    int i, j, k, g, nb, nb2, nb3, gen, pa1, pa2, nbCo, nbPFix, repn;
+    double rd, rd2, rd3, rd4, rdd1, w, nbdel, henb, wout_intra, wout_inter, wself;
 
 
     int twoN = 2 * Nv;
@@ -86,14 +85,14 @@ void recursion(int Nv, double av, int nLv, double nEqv, double sPv, double hPv, 
     // creating Haplo output file storing positions and states of mutations in POD zones at the end of simulations (the name is created using parameter values, this can be modified here):
     char haplofile[256];
     stringstream nameH;
-    nameH << "N" << Nv << "_a" << av << "_G" << Gv << "_m" << m <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_Haplo_minimal.txt";
+    nameH << "N" << Nv << "_a" << av << "_G" << Gv << "_m" << m <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_L" << Lv << "_Haplo_minimal.txt";
     nameH >> haplofile;
     ofstream fhout(haplofile);
 
     // creating output file containing summary statistics (the name is created using parameter values, this can be modified here):
     char mainfile[256];
     stringstream nameM;
-    nameM << "N" << Nv << "_a" << av << "_G" << Gv << "_m" << m <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_U" << Uv << "_L" << Lv << "_minimal.txt";
+    nameM << "N" << Nv << "_a" << av << "_G" << Gv << "_m" << m <<"_nL" << nLv << "_link" << linkPv << "_sP" << sPv << "_hP" << hPv << "_L" << Lv << "_minimal.txt";
     nameM >> mainfile;
     ofstream fout(mainfile);
 
@@ -112,7 +111,7 @@ for (repn = 1; repn <= repv; repn++){
 
     // Positioning mutations in the POD zone which is of map length 2*nLv*rd. For rv = 0 in the parameter set, mutations are equally spaced, if not, then they are placed randomly.
     // total number of initial deleterious mutations
-    int nL = Gv*nLv
+    int nL = Gv*nLv;
     // half length of first POD zone
     rdd1 = double(nL) *rd;
     // Starting position of POD on first haplotype
@@ -131,8 +130,8 @@ for (repn = 1; repn <= repv; repn++){
         // Chromosomal region with POD zone overlap.
         fixedP.push_back(rd2);
         rd2 += rd;
-        rd3 = (fixedP.size() - 1 ) % Gv;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert à retomber sur un rang de vecteur entre 0 et Gv-1
-        inds[rd3].push_back(rd2);
+        nb3 = (fixedP.size() - 1 ) % Gv;     //rd3 = index de l'individu dans lequel ira la mutation. le -1 sert à retomber sur un rang de vecteur entre 0 et Gv-1
+        inds[nb3].push_back(rd2);
     }
 
     //First line of Haplo output file contains all the positions of each locus on each haplotype
@@ -159,7 +158,7 @@ for (repn = 1; repn <= repv; repn++){
     for (g=0; g<Gv; g++){
         j = g*twoN;
         for (i = j; i < j+twoN; i++){
-            pop[i].pod = inds[g]
+            pop[i].pod = inds[g];
         }
     }
 
@@ -199,7 +198,7 @@ for (repn = 1; repn <= repv; repn++){
                 // Fitness is calculated using "fitness" function defined in SelRec.cpp.
                 w = fitness(pop[nb].pod, pop[nb + 1].pod, Whetp, Whomp);
                 // Storing individual fitnesses
-                nb = j + g * Nv
+                nb = j + g * Nv;
                 Wij[nb] = w;  // nb is used as a placeholder here because it will be reinitialized in later loops
                 wbar[g] += w;
                 if (wmax[g] < w)
@@ -212,7 +211,7 @@ for (repn = 1; repn <= repv; repn++){
             }
             //Mean fitnessess taking fixed mutations into account
             wbar[g] /= Nv;
-            wbar[g] *= pow(Whom, nbPFix);
+            wbar[g] *= pow(Whomp, nbPFix);
         }
 
         //Reproduction
@@ -336,7 +335,7 @@ for (repn = 1; repn <= repv; repn++){
                 else
                     rec(ind2, pop[pa1 + 1], pop[pa1], nbCo);
 
-                w = fitness(ind1.sel, ind2.sel, Whet, Whom);
+                w = fitness(ind1.sel, ind2.sel, Whetp, Whomp);
                 wself += w;
             }
 
@@ -377,7 +376,7 @@ for (repn = 1; repn <= repv; repn++){
                 else
                     rec(ind2, pop[pa2 + 1], pop[pa2], nbCo);
 
-                w = fitness(ind1.sel, ind2.sel, Whet, Whom);
+                w = fitness(ind1.sel, ind2.sel, Whetp, Whomp);
                 wout_intra += w;
             }
 
@@ -417,7 +416,7 @@ for (repn = 1; repn <= repv; repn++){
                 else
                     rec(ind2, pop[pa2 + 1], pop[pa2], nbCo);
 
-                w = fitness(ind1.sel, ind2.sel, Whet, Whom);
+                w = fitness(ind1.sel, ind2.sel, Whetp, Whomp);
                 wout_inter += w;
             }
         }
@@ -496,7 +495,7 @@ for (repn = 1; repn <= repv; repn++){
 
             henb = nb2 + nb;
         }
-        fout << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbfix << " " << henb << endl;
+        fout << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbPFix << " " << henb << endl;
     }
 // Updating population
         for (i = 0; i < twoNG ; i++)
@@ -505,7 +504,7 @@ for (repn = 1; repn <= repv; repn++){
     }
     //Writing state of mutations in POD zones in Haplo output file (fixed = 2, segregating = 1 and lost = 0)
 
-for (g=0,g<Gv,g++){
+for (g=0; g<Gv; g++){
     //Mutations initially present on first POD haplotype
     fhout << repn<<" ";
 
@@ -538,5 +537,7 @@ for (g=0,g<Gv,g++){
     }
 }
 fhout << endl;
+
+
 }
 }
