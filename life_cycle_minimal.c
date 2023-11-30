@@ -45,12 +45,12 @@ void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv
 
 {
     int i, j, k, g, nb, nb2, nb3, gen, pa1, pa2, nbCo, nbPFix, repn;
-    double rd, rd2, rd3, rd4, rdd1, w, nbdel, henb, wout_intra, wout_inter, wself;
+    double rd, rd2, rd3, rd4, rdd1, w, nbdel, henb, wout_intra, wout_inter, wself, wmax;
 
 
     int twoN = 2 * Nv;
     int twoNG = 2 * Nv *Gv;
-    int NG =  Nv *Gv;
+    int NGv =  Nv *Gv;
     int twosampleS = 2*sampleSv;
     int twosampleSG = 2*sampleSv*Gv;
     int sampleSG = sampleSv*Gv;             // maybe regarder combien de fois il sers
@@ -69,12 +69,11 @@ void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv
     double Whomp = 1 - sPv;
 
     // table of fitness values
-    double Wij[Nv];
+    double Wij[NGv];
 
     // table of mean fitness for each deme and for pod , and to store max fitness of each group
     double wbar[Gv];
     double wpod[Gv];
-    double wmax[Gv];
 
     // Table to store neutral allele identities and frequencies at a given neutral locus
     std::vector<Nall> Fr;
@@ -102,6 +101,11 @@ void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv
     nameT << Gv << "_test.txt";
     nameT >> testfile;
     ofstream ftout(testfile);
+    ftout << Nv << "_N" << av << "_a" << nLv << "_nL" << sPv << "_sp" << hPv << "_hp" <<  linkPv << "_linkpv "<<  Lv  << "_L"<<  sampleSv << "_samples" <<  nbgenv << "_nbgen "<<  pasv << "_pas" <<  repv  << "_rep" <<  Gv  << "_g" <<  m  << "_m"<< endl;
+    ftout << twoN << "_twoN " << twoNG << "_twoNG " << NGv << "_NGv " << twosampleS << "_twosampleS " << twosampleSG << "_twosampleSG " <<  sampleSG << "_sampleSG "<<  Whetp  << "_Whetp "<<  Whomp << "_whomp " << endl;
+    ftout << sizeof(pop) << " pop size " << sizeof(temp) << "temp size " << endl;
+
+
 
     // Creating POD zones: Positions of mutations are saved in vectors
     std::vector<double> inds[Gv]; //possibility to code this as a table
@@ -205,32 +209,32 @@ for (repn = 1; repn <= repv; repn++)
             nbPFix = fixedP.size();
         }
         ftout <<repn<<"fitness"<< endl;
+        wmax = 0;
         //Measuring fitness
         for (g = 0; g < Gv; g++)
         {
-
             for (j = 0; j < Nv; j++)
             {
                 nb = 2 * j + g * twoN; // for each individuals of each deme
                 // Fitness is calculated using "fitness" function defined in SelRec.cpp.
                 w = fitness(pop[nb].pod, pop[nb + 1].pod, Whetp, Whomp);
+                ftout <<w<<" w "<< endl;
                 // Storing individual fitnesses
                 nb = j + g * Nv;
                 Wij[nb] = w;  // nb is used as a placeholder here because it will be reinitialized in later loops
                 wbar[g] += w;
-                if (wmax[g] < w)
-                    wmax[g] = w;
+                if (wmax < w)
+                    wmax = w;
             }
-            for (j = 0; j < Nv; j++)  // we need twice the same loop in order to use the real max value of wmax
-            {
-                nb = 2 * j + g * twoN;
-                Wij[nb] /= wmax[g];
-            }
-            //Mean fitnessess taking fixed mutations into account
+
+        for (j = 0; j < NGv; j++)
+            Wij[j] /= wmax;
+
+        //Mean fitnessess taking fixed mutations into account
             wbar[g] /= Nv;
             wbar[g] *= pow(Whomp, nbPFix);
         }
-        ftout <<repn<<"boucle"<< endl;
+        ftout <<wmax<<"wmax"<< endl;
         //Reproduction
         for (g = 0; g < Gv; g++)
         {
@@ -249,15 +253,15 @@ for (repn = 1; repn <= repv; repn++)
                 {
                     do
                     {
-                        k = rnd.randInt(Gv);
+                        k = rnd.randInt(Gv-1);
                     } while (k==g);
                 }
-                ftout <<j<<"do 1"<< endl;
+                ftout <<k <<" " << g <<" do 1"<< endl;
                 // Selecting the maternal individual
                 do
                 {
                     i = rnd.randInt(Nv - 1) + k * Nv ;
-                    ftout <<j<<"inside loop 1"<< endl;
+                    ftout << i << " " << Wij[i] <<" "<<"inside loop 1"<< endl;
                 } while (rnd.rand() > Wij[i]);
                 ftout <<j<<"do 2"<< endl;
                 pa1 = 2 * i;
@@ -272,7 +276,7 @@ for (repn = 1; repn <= repv; repn++)
                     rec(ind1, pop[pa1], pop[pa2], nbCo);
                 else
                     rec(ind1, pop[pa2], pop[pa1], nbCo);
-                ftout << nb <<"chroo"<< endl;
+                ftout << sizeof(pop) << " size pop " << sizeof(Wij) << "size wij" << sizeof(temp) <<"size temp"<< endl;
                 temp[nb] = ind1;
                 ftout << j <<"wtf?"<< endl;
 
@@ -413,7 +417,7 @@ for (repn = 1; repn <= repv; repn++)
 
                     do
                     {
-                        pa2 = rnd.randInt(NG - 1);
+                        pa2 = rnd.randInt(NGv - 1);
                     } while (pa2 == pa1);
 
                     pa1 *= 2;
@@ -458,7 +462,7 @@ for (repn = 1; repn <= repv; repn++)
             {
                 do
                 {
-                    nb3 = rnd.randInt(NG - 1);
+                    nb3 = rnd.randInt(NGv - 1);
                     nb3 *= 2;
 
                 } while (find(Pos.begin(), Pos.end(), nb3) != Pos.end());
