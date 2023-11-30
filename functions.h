@@ -27,7 +27,7 @@ struct Nall
 };
 
 // Prototypes of functions
-void recursion(int Nv, double av, int rv, int nLv, double sPv, double hPv, double linkPv, double sv, double hv, double Uv, double Lv, double Unv, int sampleSv, int nbgenev, int nbgenv, int pasv, int repv);
+void recursion(int Nv, double av, int nLv, double sPv, double hPv, double linkPv, double Lv, int sampleSv, int nbgenv, int pasv, int repv, int Gv, double m)
 double gasdev();
 double poisdev(const double xm);
 double fitness(vector<double> &c1, vector<double> &c2, double wHe, double wHo);
