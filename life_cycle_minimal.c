@@ -226,15 +226,15 @@ for (repn = 1; repn <= repv; repn++)
                 if (wmax < w)
                     wmax = w;
             }
-
-        for (j = 0; j < NGv; j++)
-            Wij[j] /= wmax;
-
         //Mean fitnessess taking fixed mutations into account
             wbar[g] /= Nv;
             wbar[g] *= pow(Whomp, nbPFix);
         }
         ftout <<wmax<<"wmax"<< endl;
+
+        for (j = 0; j < NGv; j++)
+            Wij[j] /= wmax;
+     
         //Reproduction
         for (g = 0; g < Gv; g++)
         {
