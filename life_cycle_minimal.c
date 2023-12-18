@@ -503,26 +503,9 @@ for (repn = 1; repn <= repv; repn++)
             }
 
             nbdel /= double(twosampleSG);
-            nb2 = indc.size();
+            henb = indc.size();
             indc.clear();
 
-            // number of polymorphic loci in POD zones
-            for (i = 0; i < twosampleSG; i++)
-            {
-                nb3 = Pos[i];
-                k = pop[nb3].pod.size();
-                for (j = 0; j < k; j++)
-                {
-                    if (find(indc.begin(), indc.end(), pop[nb3].pod[j]) == indc.end())
-                        indc.push_back(pop[nb3].pod[j]);
-                }
-
-                sort(indc.begin(), indc.end());
-            }
-
-            nb = indc.size();
-
-            henb = nb2 + nb;
             //}
             fout << repn << " " << gen << " " << wself << " " << wout_intra << " " << wout_inter << " " << nbdel << " " << nbPFix << " " << henb << endl;
         }
@@ -570,4 +553,3 @@ for (repn = 1; repn <= repv; repn++)
 
 }
 }
-
